@@ -1,0 +1,60 @@
+---
+title: "Progress Memo 1"
+subtitle: |
+  | Final Project 
+  | Data Science 1 with R (STAT 301-1)
+author: "Lindsay Ervin"
+date: today
+format:
+  html:
+    
+    toc: true
+    embed-resources: true
+execute:
+  warning: false
+from: markdown+emoji 
+editor_options: 
+  chunk_output_type: console
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+[My Github Repo Link](https://github.com/stat301-1-2023-fall/final-project-1-lervin1.git)
+
+:::
+
+## Data source
+
+```{r}
+#| label: load-data-packages
+
+# load packagaes
+library(tidyverse)
+
+# reading in data
+shopping_trends <- read_csv("data/shopping_trends.csv")
+```
+
+Consumer Shopping Trends Dataset^[[Kaggle Link](https://www.kaggle.com/datasets/iamsouravbanerjee/customer-shopping-trends-dataset/)]
+
+## Why this data
+
+I want to explore consumer shopping trends because it interests me. As someone who buys into consumerism and has seen our world stress the importance of consumerism, it intrigues me to know more about the specific consumer shopping trends in this day and age. This is also something that I have been wanting to research for a while, as last year I dove into consumer trends and cult-like behavior behind consumerism. I am curious to see the difference between men and womens consumer shopping trends, as well as how age plays a role in it.
+
+## Data quality & complexity check
+
+```{r}
+#| label: checking-na
+#| results: hide
+
+# checking for na values
+is.na(shopping_trends)
+```
+
+In this dataset that I read in using the read_csv() function above, it is shown that there are 3900 observations and 19 variables. There are 14 categorical variables and 5 numeric variables. We can also see that using the is.na() function, there are no na values.
+
+## Potential data issues
+
+The dataset in general is pretty clean, but I may run into some problems because the ratio of categorical to numeric variables is off. There are onlt 5 numeric variables and 14 categorical variables. Because of this, there can be problems when creating graphics that require only numeric variables. It can limit the types and varieties of graphics I can use when creating my final project as well.

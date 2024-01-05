@@ -1,0 +1,429 @@
+---
+title: "An EDA on Movie Profitability"
+subtitle: |
+  | Final Project 
+  | Data Science 1 with R (STAT 301-1)
+author: "Lindsay Ervin"
+date: today
+format:
+  html:
+    
+    toc: true
+    embed-resources: true
+execute:
+  warning: false
+from: markdown+emoji 
+echo: false
+editor_options: 
+  chunk_output_type: console
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+[My Github Repo Link](https://github.com/stat301-1-2023-fall/final-project-1-lervin1.git)
+
+:::
+
+## Introduction
+
+Throughout this extensive Exploratory Data Analysis (EDA) I will diving into the [TMDB Movies Dataset](https://www.kaggle.com/datasets/asaniczka/tmdb-movies-dataset-2023-930k-movies/data) in order to understand the factors that contribute to a movie's success. The motivation for this analysis stems from a curiosity about the film industry, as I am someone who loves watching movies, especially in the theaters. I have a passion for movies, as I love the emotions they bring out in myself, and I want to dive deeper into understanding the success producers have while challenging people to feel these sensations.
+
+While initially analyzing the dataset, I was drawn to the revenue and budget variables. As someone who enjoys numbers and economics, these variables stood out to me, as I assumed they had the most to do with a movie's success. I also was intrigued by the different genre categories that movies fall under. This curiosity is driven by the hypothesis that certain genres may be more profitable than others, and understanding this could provide valuable insights for filmmakers, investors, and even audiences. Relating to my initial interests within the dataset, I decided to focus on the research question of **which variables have the greatest effect on a movie's profit**.
+
+To answer these questions, I will be using the TMDB Movies dataset. This dataset contains comprehensive information about movies ranging from 1865 to 2023, including details such as the movie's budget, revenue, genre, and more. For the sake of this EDA, I will be focusing on movies from the last decade (2013-2023) in order to test my hypothesis and find out which variables have the most impact on a movie's profit. The `split_genres` column, which contains the genre information for each movie, and the `profit` column, which represents the movie's profit, will be particularly relevant for my analysis, as I created these columns using strings and mutations in my data wrangling and cleaning processes.
+
+The dataset is a reliable source of information as it is derived from The Movie Database (TMDB), a community-built movie and TV database. It is important to note that the data has been pre-processed and cleaned for analysis, which includes handling missing values and transforming certain variables for better interpretability.
+
+This EDA will involve a series of visualizations and graphs to understand the data and uncover relationships between different variables and the variable `profit`. More specifically, I will be focusing on the numeric variables `revenue`, `budget`, `vote_average`, and `runtime` to see which ones have the greatest impact on the movies `profit`. I will also be examining the categorical variables of `genres`, `original_language`, and `adult` to see if they play a role in determining a movie's profits as well. Visualizations such as scatterplots, histograms, and boxplots will be used as well as the use of summary statistic and correlation coefficient tables in order to dive deeper into this research question.
+
+By conducting this analysis, we aim to provide a data-driven understanding of the relationship between the above variables and profits. This could potentially guide decision-making in the film industry and contribute to the broader field of data science by demonstrating how exploratory data analysis can yield valuable insights from raw data.
+
+## Data overview & quality
+
+The TMDB Movies Dataset, which I have saved in the working environment as `movies_data` contains 957,689 observations and 23 variables. Because I will only be focusing on movies from the last decade, I have altered the dataset, and saved it as `movies_condensed`. This condensed version of the `movies_data` contains 716,322 observations and 16 variables. 
+
+The dataset contains both categorical variables, numeric variables, and date variables. Below I have listed the variables under its given specification.
+
+**Categorical variables:** `title` `adult` `original_language` `genres` `spoken_languages`
+
+**Numeric variables:** `vote_average` `vote_count` `runtime` `budget` `popularity` `revenue`
+
+**Date variables:** `release_date`
+
+In addition to the variables that were provided from the TMDB Movies Dataset, I have created three other variables. First, `english` indicates if the movie is in the English language by using the number 1 as true and 0 as false. Next, `split_genres` uses a string to split the genres into individual categories. Lastly, `profit` is calculated as `revenue` minus `budget`.
+
+Please see the [codebook](#fig-17) in the appendix for more information on the variables.
+
+With any raw data, there is likely to be missing values for each variable. In `movies_condensed`, there were 3,621,284 missing values in total. The missingness originally was displayed as a 0, but I changed these values to NA so they would not skew my visualizations and summary statistics. By getting rid of the missing values, we are able to get a more accurate representation of the data and the relationship between the variables.
+
+Please see @fig-18 and [Figure 19](#fig-19) in the appendix for more information on missingness.
+
+## Explorations
+
+The realm of filmmaking is a captivating and intriguing, as the success of a movie is not only measured by critical acclaim but also by its financial performance. In this exploration, we delve into the world of movie profits, seeking to unravel the web of factors that influence the financial success of films. As we navigate through the dataset, our primary objective is to discern the variables that have the greatest impact on movie profitability.
+
+Due to the format of the dataset and the choice of variables I decided to use, I thought it would be best to go through each variable first and the dive into the relationship between the variables and profit. This was strategic in order to fully tell my story and explore these relationships.
+
+### Getting to know our variables
+
+It is important that we get a sense of the variable we will be analyzing throughout this EDA. In [Figure 1](#fig-1) below, you will find the summary statistics for the five numeric variables that we will be taking a closer look into while exploring the relationship between them and the variable `profit`. 
+
+```{r}
+#| label: load-packages-data
+
+# load packages 
+library(tidyverse)
+library(stringr)
+library(knitr)
+library(ggthemes)
+library(naniar)
+library(DT)
+library(gt)
+library(tibble)
+library(patchwork)
+library(tools)
+
+# load data
+movies_data <- read_csv("data/raw/movies_dataset.csv")
+movies_condensed <- read_csv("data/movies_condensed.csv")
+movies_condensed_codebook <- read_csv("data/movies_condensed_codebook.csv")
+```
+
+```{r}
+#| label: data-wrangling
+
+# seeing which movies original language in English
+movies_condensed <- movies_condensed |>
+  mutate(english = 1*(original_language == "en"),
+         english = factor(english))
+
+# changing adult to 1 or 0 for true or false
+movies_condensed <- movies_condensed |>
+  mutate(adult = 1*(adult),
+         adult = factor(adult))
+
+# creating a string to split genres using commas
+movies_condensed <- movies_condensed |> 
+  mutate(split_genres = str_split(genres, ",\\s*"))
+```
+
+
+```{r}
+#| label: fig-1
+#| fig.cap: Summary statistics for numeric variables
+
+# function to compute summary statistics
+summary_stats <- function(data, var) {
+  data |> 
+    na.omit() |> 
+    summarise(
+      mean = mean(!!var, na.rm = TRUE),
+      median = median(!!var, na.rm = TRUE),
+      min = min(!!var, na.rm = TRUE),
+      max = max(!!var, na.rm = TRUE),
+      sd = sd(!!var, na.rm = TRUE)
+    )
+}
+
+# numeric variables of interest
+vars_of_interest <- c("profit", "revenue", "budget", "runtime", "vote_average")
+
+# 'for' loop to compute summary statistics for each variable
+movie_stats <- list()
+
+for (var in vars_of_interest) {
+  movie_stats[[var]] <- summary_stats(movies_condensed, sym(var))
+}
+
+# combine the results into a data frame
+movie_stats_df <- bind_rows(movie_stats) |> 
+  mutate(variable = vars_of_interest) |> 
+  relocate(variable)
+
+# changing column names
+colnames(movie_stats_df)[1] <- "Variable"
+colnames(movie_stats_df)[2] <- "Mean"
+colnames(movie_stats_df)[3] <- "Median"
+colnames(movie_stats_df)[4] <- "Minimum"
+colnames(movie_stats_df)[5] <- "Maximum"
+colnames(movie_stats_df)[6] <- "Standard Deviation"
+
+
+# display the result using DT
+datatable(movie_stats_df) |> 
+  formatRound(columns = 2:6, digits = 2)
+
+```
+
+\
+Through these summary statistics, we can see that the movies in the dataset exhibit a wide range of profitability, with a mean profit of approximately $45.7 million. However, there is significant variability, as indicated by the high standard deviation. On the other hand, the mean revenue is approximately $71.3 million and a mean budget of 25.7 million.
+
+The average runtime of movies in the dataset is approximately 106.70 minutes. The dataset includes movies with runtimes as short as 1.00 minute and as long as 480.00 minutes. While the mean vote average is 6.43, indicating generally positive audience reception. The dataset includes movies with varying audience ratings, ranging from 0.80 to 10.00.
+
+These summary statistics provide a comprehensive overview of key financial and qualitative metrics for the movies in the dataset, highlighting their diversity and the varying degrees of success in terms of profitability, revenue, budget, runtime, and audience reception.
+
+
+Now we are able to take a closer look at the variable `profit` so that we can better understand how other variables affect it later on in the EDA.
+
+![A boxplot of movie profits to clearly outline the distribution and outliers of movie profits](figures/fig_2.png){#fig-2}
+
+From @fig-2, we can tell the presence of numerous data points outside the typical distribution is apparent in the boxplot, signaling the existence of outliers within the dataset. Notably, it's intriguing to observe movies that have achieved profits surpassing the remarkable threshold of 2,000,000,000 dollars, which is an accomplishment that undoubtedly stands out. On the other hand, there are instances where movies have recieved negative profits, a phenomenon not entirely uncommon in the diverse landscape of the film industry.
+
+![Distribution of movie profit from 2013-2019 with profits ranging from 0 to 500,000,000](figures/fig_3.png){#fig-3}
+
+@fig-3 displays the distribution of movie profits from the years 2013-2019. Because there are many outliers, it is in the best interest that we focus on movies that have made profits within the range of $0 to $500,000,000 in order to get an accurate representation of the spread of the data. From the histogram, we can see that there are a limited amount of high profit movies, as when the profit increases, the amount of movies decreases.
+
+![Distribution of movie profit from 2019-2023 with profits ranging from 0 to 1,000,000,000](figures/fig_4.png){#fig-4}
+
+@fig-4 illustrates the profit distribution of movies spanning the years 2019-2023. The overall spread is comparable to @fig-3, with a notable distinction in the x-axis limits. To accommodate movies that surpass the $500,000,000 threshold during this timeframe, I expanded the x-axis limits from $500,000,000 to $1,000,000,000. This adjustment suggests that, on average, more recent movies are yielding higher profits compared to those released in the earlier half of the decade.
+
+Overall by analyzing the variable `profit` we are able to get a better sense of the variable in general, which ultimately allows us to make hypotheses about which variables have the greatest impact on profit.
+
+#### Revenue
+
+![A boxplot of revenue generated from movies to clearly outline the distribution and identify outliers within the data](figures/fig_5.png){#fig-5}
+
+From @fig-5 we can interpret the central box in the plot as the the interquartile range (IQR), with the median line denoting the midpoint of the dataset. This box displays the middle 50% of movie revenues, providing a quick glance at the distribution's central tendencies. The length of the box, or IQR, showcases the spread of revenues among the center.
+
+One of the most striking features of this particular boxplot is the amount of data points extending beyond the whiskers. These outliers, signify movies with revenues that significantly deviate from the norm.
+
+
+![Distribution of movie revenue visualzed through histograms separated by the first half of the decade and the second half of the decade](figures/fig_6.png){#fig-6}
+
+@fig-6 displays a unimodal histogram, which indicates the spread of revenue within the given time frame. It is evident that not very many movies produce high amounts of revenue, as most of the data is within the bounds of $0 to $375,000,000. This is not too surprising because only very few movies recieve enough box office sales and publicity to exceed this threshold.
+
+Crucially, the revenue histograms serve as a link to understanding the variables affecting a movie's profit. It allows for a basis for multivariate analysis that truly dives into the relationship of correlations between revenue and profit, helping us discern whether higher revenues consistently lead to greater profits.
+
+#### Budget
+
+![Distribution of movie budget within the last decade](figures/fig_7.png){#fig-7}
+
+@fig-7 displays a unimodal histogram that is right-skewed. As the budget for each movie increases, the number of movies decreases. By analyzing the spread of budgets, we can identify trends, such as whether the majority of films have moderate budgets or if there are outliers with exceptionally high production costs. This will ultimately lead us to better understand the variable so we can later compare it to movie profits to see the correlation.
+
+By examining the spread and concentration of budget values, we can gain a preliminary understanding of the finances that go along with the movie industry, and how much money it actually takes to create these hit movies.
+
+#### Runtime
+
+![Distribution of movie runtime in minutes for the last decade](figures/fig_8.png){#fig-8}
+
+In the unimodal histogram of movie runtimes @fig-8 displays that a majority of movies range from 90 minutes to 120 minutes. This makes sense as calculated in [Figure 1](#fig-1), the mean movie runtime is 106 minutes. 
+
+Understanding the distribution of runtimes becomes significant when considering its potential impact on a movie's profitability. For instance, it may reveal whether audiences generally prefer shorter or longer films and whether there's a correlation between a movie's runtime and its financial success.
+
+#### Voter average
+
+![Distribution of movie ratings for the last decade](figures/fig_9.png){#fig-9}
+
+In the unimodal histogram depicting movie ratings, @fig-9, visualizes that the majority of ratings for movies are between 5.5 and 7. In [Figure 1](#fig-1), it is displayed that the mean for the variable `vote_average` is 6.43. 
+
+The histogram visually captures the distribution of vote averages across a dataset, revealing patterns in audience preferences. Connecting this data to profitability allows us to explore whether movies with higher vote averages tend to be more financially successful.
+
+### Relationships between variables and profit
+
+Now that we have conducted a thorough analysis of the key variables, encompassing factors such as movie revenues, budgets, runtime, and votes, we are ready to dive into an extensive multivariate analysis between these variables and profit. This analytical approach aims to provide an understanding of the relationships among these variables and their collective impact on a movie's profitability.
+
+First, lets look at the correlation coefficients for each numeric variable.
+
+```{r}
+#| label: fig-10
+#| fig.cap: Correlation coefficents for each numeric variable in relation to profit
+
+# creating a table with correlation coefficents of variables of interest in relation to profit
+movies_correlation <- movies_condensed |> 
+  na.omit() |> 
+  select(vars_of_interest) |> 
+  cor() |> 
+  round(digits = 3) |> 
+  as.data.frame()
+
+# capitalize and replace underscores in column names
+colnames(movies_correlation) <- str_to_title(str_replace_all(colnames(movies_correlation), "_", " "))
+
+# display data table
+datatable(movies_correlation[1, , drop = FALSE], options = list(pageLength = 10))
+```
+
+This data table ([Figure 10](#fig-10)) provides the correlation coefficients for each numeric variable that we will be analyzing to figure out which has the greatest impact on a movie's profit. The correlation coefficients are calculate in respect to the variable `profit`, as the closer the number is to 1 or -1, the greater the correlation is between the two variables.
+
+From [Figure 10](#fig-10), we can clearly tell that revenue has the greatest positive correlation with profit. This makes sense as the amount of money generated from sales usually plays a big role on profit, since profit is calculated by subtracting budget from revenue. In order to fully analyze and envision this correlation, we will provide visualizations that depict the relationship between profit and the variable in question.
+
+#### Revenue vs. Profit
+
+![Scatterplot depicting the correlation between movie profits and revenues within the last decade](figures/fig_11.png){#fig-11}
+
+The correlation between revenue and profit is predicted to be strong based on [Figure 10](#fig-10). Through visualizations seen in @fig-11, our predictions are correct, and clearly depicted is a strong positive correlation between the two variables. This means that revenue has an immense impact on a movie's ability to produce profits, and ultimately is an extremely important factor to the success of a movie.
+
+In the scatterplot, the color distinctions signify whether a movie's original language is English. Notably, a predominant number of movies are in English, and there's a noticeable trend suggesting that movies with the highest revenue are more likely to be in English.
+
+
+#### Budget vs. Profit
+
+![Scatterplot depicting the correlation between movie profits and budgets within the last decade](figures/fig_12.png){#fig-12}
+
+[Figure 10](#fig-10) reveals that the correlation between budget and profit is 0.596, which suggests a moderately strong positive correlation between the two variables. We are able to envision this through the visualization provided by @fig-12, as we can see a general upwards trend, indicating that a high budget is associated with a higher profit. Although the strength of the correlation is not as grand as it was between revenue and profit and the points are not as linear, the visualization still suggests there is a reasonably strong linear relationship between budget and profit.
+
+The color distinction in the plot continues to indicate whether a movie's original language is English. Notably, there is a discernible trend where higher-budget films are predominantly in English, and they also tend to generate more profit. This association is in line with the observation that English-language movies, often produced in the United States, typically command higher budgets, as reflected in our dataset.
+
+#### Runtime vs. Profit
+
+![Scatterplot depicting the correlation between movie profits and runtimes within the last decade](figures/fig_13.png){#fig-13}
+
+@fig-13 depicts a weak positive correlation between the movie's runtime and its profit. This implies that there is limited influence of the movie's duration on its financial success. [Figure 10](#fig-10) adds to this observation by providing a correlation coefficient of 0.159, a value commonly considered weak due to its distance from 1.
+
+This observation aligns with the understanding that audiences may have a preference for shorter movies, with the average runtime being around 106 minutes. The correlation summary suggests that, in general, longer runtimes do not strongly contribute to higher profits, supporting the notion that audiences may be less inclined to sit through significantly longer films.
+
+As for the variable `english`, it is intriguing to see that many non-English movies do have slightly longer runtimes than movies in English. This suggests a potential correlation between language and runtime, indicating that films in languages other than English may, on average, allocate more time to storytelling or content delivery. The observed difference in runtimes adds a layer to our understanding of how language factors into the production dynamics and artistic choices within the global film industry.
+
+#### Vote Average vs. Profit
+
+![Scatterplot depicting the correlation between movie profits and movie ratings within the last decade](figures/fig_14.png){#fig-14}
+
+
+Similar to @fig-13, @fig-14 depicts a weak positive correlation between the movie's rating and a movie's profit. This proves that a movie's rating does not have much to do with the amount of profit a movie gains. We could have predicted this, though, because of [Figure 10](#fig-10), and how it reveals the correlation coefficient is 0.167, which is only slightly higher than the the correlation for runtimes and profits. 
+
+It is reasonable for the correlation coefficient to be farther away from 1 because individuals might attend a movie in theaters without prior knowledge of its quality. As a result, they spend money before realizing the movie's shortcomings, and unfortunately, they cannot recoup that expenditure. 
+
+#### Genre vs. Profit
+
+```{r}
+#| label: fig-15
+#| fig.cap: Table of genres and its relationship to the variable profit within the last decade
+
+# creating a table of genres and how it relates to profit
+
+# separate genres into individual rows
+genres_profit <- movies_condensed |> 
+  separate_rows(split_genres, sep = "\\|") |> 
+  filter(!is.na(profit))
+
+# summarize data to find the leading genre based on profit
+genre_summary <- genres_profit |> 
+  na.omit() |> 
+  group_by(split_genres) |> 
+  summarise(
+    total_profit = sum(profit, na.rm = TRUE),
+    mean_profit = mean(profit, na.rm = TRUE),
+    median_profit = median(profit, na.rm = TRUE),
+    count = n()
+  ) |> 
+  arrange(desc(total_profit))
+
+# clean up and capitalize column names
+colnames(genre_summary) <- gsub("_", " ", make.names(colnames(genre_summary)))
+colnames(genre_summary) <- str_to_title(colnames(genre_summary))
+
+# change column name
+colnames(genre_summary)[1] <- "Genres"
+
+# display data table
+datatable(genre_summary) |> 
+  formatRound(columns = 2:4, digits = 2)
+```
+
+This table gives a list of movie genres as well as a summary statistic of the profits each genre creates. It is organized in a way where we can clearly see which genre brings in the biggest profit. From [Figure 15](#fig-15), we can clearly see that adventure is the leading genre when it comes to the variable `profit`. Action and comedy movies follow, as they generate the second and third most profit.
+
+The genres included in this table are derived from the original `genres` category, specifically focusing on the first genre mentioned. The first genre listed signifies the genre that most closely characterizes the movie. Through the splitting of genres using a string, I conducted this summary analysis to gain insights into the genres that yield the highest profits.
+
+The findings from this analysis provide valuable information for our broader research question. They suggest that the genre of a movie plays a substantial role in influencing its profitability. It reveals that if a producer wants to make maximize their profit, they should focus on adventure and action movies.
+
+```{r}
+#| label: fig-16
+#| fig.cap: Table depicting the relationship between a movie's profit and whether or not it is an adult film within the last decade
+
+# creating a table of adult content and how it relates to profit
+
+# separate adult content into individual rows
+adult_profit <- movies_condensed |> 
+  filter(!is.na(profit)) |>
+  mutate(adult = as.character(adult)) |>
+  separate_rows(adult, sep = "\\|")
+
+# summarize data to find the relationship between adult content and profit
+adult_summary <- adult_profit |> 
+  na.omit() |> 
+  group_by(adult) |> 
+  summarise(
+    total_profit = sum(profit, na.rm = TRUE),
+    mean_profit = mean(profit, na.rm = TRUE),
+    median_profit = median(profit, na.rm = TRUE),
+    count = n()
+  ) |> 
+  arrange(desc(total_profit))
+
+# clean up and capitalize column names
+colnames(adult_summary) <- gsub("_", " ", make.names(colnames(adult_summary)))
+
+# change column names
+colnames(adult_summary)[1] <- "Adult"
+colnames(adult_summary)[2] <- "Total Profit"
+colnames(adult_summary)[3] <- "Mean Profit"
+colnames(adult_summary)[4] <- "Median Profit"
+colnames(adult_summary)[5] <- "Count"
+
+# display data table
+datatable(adult_summary) |> 
+  formatRound(columns = 2:4, digits = 2)
+
+```
+
+In [Figure 16](#fig-16), we dive into the impact of categorizing a movie as "adult" or not on its overall profit. In the accompanying data table, a binary system is employed where 0 signifies a non-adult film, and 1 indicates an adult film. The evident trend showcases that non-adult films tend to yield higher profits, supported by a significantly larger total profit.
+
+However, there are potential biases within this table. There is a significantly higher count in non-adult movies vs. adult movies, which ultimately influences the summary statistics. This problem can potentially skew the total profit figures because the lower count for adult movies may contribute to their comparatively lower total profit.
+
+Despite these biases, the summary statistics are generally logical. Non-adult films often appeal to a broader audience, facilitating greater box office success. The wider audience for non-adult films translates into increased profitability. This insight serves as a valuable cue for producers, highlighting the potential for maximizing profits by emphasizing the creation of non-adult films.
+
+## Conclusion
+
+Throughout this EDA, I decided to utilize visualizations such as scatterplots, histograms, and boxplots, as well as tables in order to analyze the relationship between certain variables and `profit`. It was clear that revenue had the greatest impact on movie profits, due to it's correlation coefficient closest to 1 and the visibly linear relationship though the scatterplot. I was not shocked by this because higher revenue creates a larger base from which to offset costs, which means more successful movies with significant revenue have the potential for increased profitability.
+
+It was also evident that runtime has the least effect on a movie's profit, as the correlation coefficient is the farthest from 1. This ultimately surprises me because, personally, I would not waste time sitting through a long movie in the theater. Regardless, people obviously still choose to watch movies no matter the length.
+
+Another thing that shocked me is that the leading genre for generating profit is adventure. Personally, I would have thought it was comedy because there seem to be a greater abundance of comedy movies offered. Adventure movies, though, appeal to a broader audience, which ultimately effects the total profit generated for the genre.
+
+After conducting this EDA, I became curious about the different platforms movies are offered on now. This poses the research question of how do these emerging new technologies and streaming platforms impact a movie's profitability. It would also be useful to analyze the most popular movie platforms and compare them with profit. To do this, I would join datasets containing information from different streaming platforms such as Netflix, Hulu, and HBO Max. This was I can compare them and assess their profits.
+
+Overall, It was interesting to see the relationships between the different variables and `profit`, and going forward I will be more conscious of these factors when going to the movie theater and contributing to the success of certain movies.
+
+## References
+
+To obtain this dataset I used the website Kaggle that provides many datasets for exploration.
+
+::: {.callout-tip icon=false}
+
+## Link to Dataset
+
+[TMDB Movies Dataset](https://www.kaggle.com/datasets/asaniczka/tmdb-movies-dataset-2023-930k-movies/data)
+
+:::
+
+## Appendix
+
+### Technical Information
+
+```{r}
+#| label: fig-17
+#| fig.cap: Table for movies_condensed_codebook
+
+datatable(movies_condensed_codebook, options = list(scrollX = TRUE))
+```
+
+I have attached the [codebook](#fig-17) because I want readers to have it easily accessible when viewing the HTML document. This way people are able to get a better sense of the variables in `movies_condensed` so they can get a better understand of the visualizations and tables throughout the EDA.
+
+![Visualization of missingness in movies_condensed dataset](figures/fig_18.png){#fig-18}
+
+I have attached @fig-18 indicating the missingness for each variable in the `movies_condensed` dataset. It clearly shows that `profit` has the most missing values while revenue is a close second. It also shows that the variables `release_date`, `original_language`, `id`, `english`, and `adult` do not have missing values. [Figure 19](#fig-19) provides a more extensive summary of missingnes, indicating the exact number of missing values in each column.
+
+```{r}
+#| label: fig-19
+#| fig.cap: A summary table of missingness for each variable in the dataset movies_condensed
+
+missing_summary <- movies_condensed |> 
+  miss_var_summary()
+
+datatable(missing_summary) |> 
+  formatRound(columns = 3, digits = 2)
+```
+
+[Figure 19](#fig-19) shows that the variable with the most missingness is `profit` at 705,602 missing values. It also shows the percentage of missing values for the specific column.

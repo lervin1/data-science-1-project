@@ -1,0 +1,126 @@
+---
+title: "Executive Summary: EDA on Movie Profitability"
+subtitle: |
+  | Final Project Executive Summary
+  | Data Science 1 with R (STAT 301-1)
+author: "Lindsay Ervin"
+date: today
+format:
+  html:
+    
+    toc: true
+    embed-resources: true
+execute:
+  warning: false
+from: markdown+emoji 
+echo: false
+editor_options: 
+  chunk_output_type: console
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+[My Github Repo Link](https://github.com/stat301-1-2023-fall/final-project-1-lervin1.git)
+
+:::
+
+## Introduction
+
+This Exploratory Data Analysis (EDA) aims to identify the key variables that significantly impact the profitability of movies. Using the [TMDB Movies Dataset](https://www.kaggle.com/datasets/asaniczka/tmdb-movies-dataset-2023-930k-movies/data), encompassing factors such as revenue, budget, vote average, runtime, and genre, the analysis provides valuable insights into the dynamics between these variables and `profit`.
+
+## Purpose
+
+The purpose of the EDA is to look at different factors that have to do with a movie's financial success. By analyzing the variables through univariate and multivariate analysis, people are able to directly see correlations between key variables and the variable `profit`. After, the variable that contributes most to a movie's profit will ultimately be revealed.
+
+## Key Findings
+
+### Revenue vs. Profit
+
+It is evident through the findings in the EDA that revenue has the greatest impact on a movie's profit. Displayed through @fig-1 below, the relationship between revenue and profit is clearly visualization. The graph is linear, as the two variables have a strong positive correlation with each other. 
+
+This is expected as the more revenue a movie generates, the greater the profit should be, which is ultimately displayed in the graphic.
+
+
+![Scatterplot depicting the correlation between movie profits and revenues within the last decade](figures/fig_11.png){#fig-1}
+
+### Runtime vs. Profit
+
+It is made clear that runtime does not have a major effect on movie profits. @fig-2 displays a graph which clearly indicates the weak positive correlation between a movie's profit and runtime. 
+
+This is ultimately surprising as many people do not like to sit through long movies. Nonetheless, it is clear that a majority of the movies are clustered around 100 to 130 minutes, meaning the duration of movies is around the same while movie profits fluctuate more.
+
+![Scatterplot depicting the correlation between movie profits and runtimes within the last decade](figures/fig_13.png){#fig-2}
+
+### Genre vs. Profit
+
+As described in [Figure 3](#fig-3), adventure is the leading genre when it comes to movie profits. The next two genres that accumulate the most profits are action and comedy. The total profit for adventure movies is 188,874,616,203, which is ultimately 10,327,238,093 more total profit than action movies. This can ultimately be useful for filmmakers and directors when choosing which genre to categorize their movie as.
+
+
+```{r}
+#| label: fig-3
+#| fig.cap: Table of genres and its relationship to the variable profit within the last decade
+
+# load packages
+library(tidyverse)
+library(stringr)
+library(DT)
+
+# load data
+movies_condensed <- read_csv("data/movies_condensed.csv")
+
+# creating a string to split genres using commas
+movies_condensed <- movies_condensed |> 
+  mutate(split_genres = str_split(genres, ",\\s*"))
+
+# creating a table of genres and how it relates to profit
+
+# separate genres into individual rows
+genres_profit <- movies_condensed |> 
+  separate_rows(split_genres, sep = "\\|") |> 
+  filter(!is.na(profit))
+
+# summarize data to find the leading genre based on profit
+genre_summary <- genres_profit |> 
+  na.omit() |> 
+  group_by(split_genres) |> 
+  summarise(
+    total_profit = sum(profit, na.rm = TRUE),
+    mean_profit = mean(profit, na.rm = TRUE),
+    median_profit = median(profit, na.rm = TRUE),
+    count = n()
+  ) |> 
+  arrange(desc(total_profit))
+
+# clean up and capitalize column names
+colnames(genre_summary) <- gsub("_", " ", make.names(colnames(genre_summary)))
+colnames(genre_summary) <- str_to_title(colnames(genre_summary))
+
+# change column name
+colnames(genre_summary)[1] <- "Genres"
+
+# display data table
+datatable(genre_summary) |> 
+  formatRound(columns = 2:4, digits = 2)
+```
+
+## Main Issues
+
+Main issues that arose during this EDA was an issue with values that do not accurately represent the data. For instance, the values that were unclear on not recorded while creating this dataset were displayed as "0". This was an issue as they should be displayed as "NA" instead. This was a quick fix with data cleaning and wrangling technique that allowed for these values to be changed within the dataset.
+
+Another issue that was brought about was the fact that the dataset was extremely large. At first, it was difficult to create visualizations without overplotting and system crashing. It was also difficult to get a sense of all the variables and observations within the dataset. To resolve this issue, the main focus of this EDA was on movies within the last decade (2013-2023). This way, the visualizations can be clearer and it can be more relatable to this generation, as predictions of future trends can be conducted easier by focusing on more recent data. 
+
+## Conclusion
+
+To conclude, this Exploratory Data Analysis was conducted out of the curiosity of what factors contribute to a movie's financial success. By analyzing the variables in question, researchers and filmmakers can understand the importance of revenue and recognize the unimportance of a movie's runtime. Researchers are also able to get a sense of the different genres movies can fall under, and notice which genres tend to be the most profitable.
+
+## References
+
+::: {.callout-tip icon=false}
+
+## Link to Dataset
+
+[TMDB Movies Dataset](https://www.kaggle.com/datasets/asaniczka/tmdb-movies-dataset-2023-930k-movies/data)
+
+:::

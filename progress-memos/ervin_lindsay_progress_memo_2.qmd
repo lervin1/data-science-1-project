@@ -1,0 +1,188 @@
+---
+title: "Progress Memo 2"
+subtitle: |
+  | Final Project 
+  | Data Science 1 with R (STAT 301-1)
+author: "Lindsay Ervin"
+date: today
+format:
+  html:
+    
+    toc: true
+    embed-resources: true
+execute:
+  warning: false
+from: markdown+emoji 
+echo: false
+editor_options: 
+  chunk_output_type: console
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+[My Github Repo Link](https://github.com/stat301-1-2023-fall/final-project-1-lervin1.git)
+
+:::
+
+
+```{r}
+#| label: load-packages-data
+
+# loading packages
+library(tidyverse)
+library(knitr)
+
+# reading in data
+movies_data <- read_csv("data/movies_dataset.csv")
+```
+
+## Analyzing my Data
+
+```{r}
+#| label: analyzing-data
+
+# converting variables
+movies_data <- movies_data |> 
+  mutate(across(where(is.character), as.factor),
+         across(where(is.logical), as.character))
+
+# checking for na values
+missing_sum <- movies_data |> 
+  summarise_all(~sum(is.na(.)))
+
+# getting rid of na that are relevant
+movies_data <- movies_data |> 
+  drop_na(release_date, title, genres)
+
+
+# defining numeric and categorical variables
+num_variables <- c("vote_average", "vote_count",
+                   "revenue", "runtime",
+                   "budget", "popularity")
+cat_variables <- c("status", "adult",
+                   "original_language", "genres")
+
+# summary of numeric variables
+num_summary <- movies_data |> 
+  select(all_of(num_variables)) |> 
+  summarise_all(list(mean = mean, sd = sd,
+                     median = median, min = min, max = max))
+
+kable(num_summary)
+
+# summary of categorical variables
+cat_summary <- movies_data |> 
+  select(all_of(cat_variables)) |> 
+  pivot_longer(cols = everything(),
+               names_to = "variable", values_to = "value") %>%
+  group_by(variable, value) |> 
+  summarise(count = n()) |> 
+  arrange(variable, desc(count))
+
+```
+
+I have calculated summary statistics for both numeric and categorical variables. I have printed the summary statistics for the numeric variables, but not for the categorical variables, as I will just use it to further develop my EDA. In my EDA I would like to explore budget vs. revenue when it comes to movies, and see overall how budget affects revenue and how revenue affects other variables such as genre and votes.
+
+## Univariate Analysis
+
+```{r}
+#| label: movie-budgets
+
+# looking at the distribution of movie budgets above $50,000,000
+movies_data |> 
+  ggplot(aes(x = budget)) +
+  geom_histogram(fill = "blue", color = "black", bins = 30) +
+  labs(title =
+         "Distribution of Movie Budgets Above $50,000,000",
+       x = "Budget", y = "Count") +
+  scale_x_continuous(limits = c(50000000, 900000000),
+                     breaks = seq(50000000, 900000000,
+                                  by = 90000000),
+                     labels = scales::dollar_format(), ) +
+  scale_y_continuous(limits = c(0, 350)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# looking at the distribution of movie budgets below $50,000,000
+movies_data |> 
+  ggplot(aes(x = budget)) +
+  geom_histogram(fill = "blue", color = "black", bins = 30) +
+  labs(title =
+         "Distribution of Movie Budgets Below $50,000,000",
+       x = "Budget", y = "Count") +
+  scale_x_continuous(limits = c(0, 50000000),
+                     breaks = seq(0, 50000000,
+                                  by = 5000000),
+                     labels = scales::dollar_format(), ) +
+  scale_y_continuous(limits = c(0, 500)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+From this, we can see that there are many more movies within the limits of 0 and 50,000,000 than there are about 50,000,000. We can see that once we get higher with the budget, the count decreases.
+
+
+```{r}
+#| label: movie-revenue
+
+# distribution of movie revenue greater than $50,000,000
+movies_data |> 
+  ggplot(aes(x = revenue)) +
+  geom_histogram(fill = "purple", color = "black",
+                 bins = 30) +
+  labs(title = "Distribution of Movie Revenues",
+       x = "Revenue", y = "Count") +
+  scale_x_continuous(limits = c(5000000, 50000000),
+                     breaks = seq(5000000, 50000000,
+                                  by = 5000000),
+                     labels = scales::dollar_format(), ) +
+  scale_y_continuous(limits = c(0, 500)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# distribution of movie revenue less than $50,000,000
+movies_data |> 
+ggplot(aes(x = revenue)) +
+  geom_histogram(fill = "purple", color = "black",
+                 bins = 30) +
+  labs(title = "Distribution of Movie Revenues",
+       x = "Revenue", y = "Count") +
+  scale_x_continuous(limits = c(5000000, 3000000000),
+                     breaks = seq(5000000, 3000000000,
+                                  by = 200000000),
+                     labels = scales::dollar_format(), ) +
+  scale_y_continuous(limits = c(0, 500)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+We can see that when the movie revenue increases, the count decreases. This makes sense as not very many movies make over 2 billion dollars worth of revenue.
+
+## Bivariate Analysis
+```{r}
+#| label: scatter-plots
+
+# scatterplot of budget vs. revenue
+movies_data |> 
+ggplot(aes(x = budget, y = revenue)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Budget vs. Revenue", x = "Budget",
+       y = "Revenue") +
+  theme_minimal()
+
+
+```
+
+From this, we can tell that as the budget increases the revenue also increases. This means there is a positive correlation between budget and revenue. There seems to be a lot of overplotting and the scales are messed up, so that is something I will fix in the future.
+
+I will be adding a plot that analyzes the distribution between revenue and genre as well.
+
+I wanted to establish a couple variables that I will be diving into in the future, as well as create some initial graphs so that we can see the relationship the variables have with the count, as well as other variables. I will be making sure to filter out soe outliers next so that I can get a more accurate representation of the data and more accurate graphs since the data is so large. 
+
+I will also be joining datasets, as there is a unique ID that will make it easy for me to join datasets.
+
+I think I can do a better job tidying the data. Over the next couple of weeks that is something I will focus on in order to do a more extensive EDA. I want to also see if movies are getting more of less expensive to produce. In conclusion, I really want to focus on how budget and revenue play a role with other variables such as genre and votes.
